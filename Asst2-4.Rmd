@@ -1,0 +1,68 @@
+---
+title: "Assignment 2-4: Final report for Module 2"
+author: "Your Name"
+date: "Today's date"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Due Sunday, March 29 @ midnight through Github**
+
+Write up your final report to answer the questions:
+
+**Question 2.1: What factors measured in the NYC HANES survey are associated with having hypertension?**
+and 
+**Question 2.2: How do our estimates from survey-weighted logistic regression differ from those where we ignore survey weights?**
+
+Write a complete report investigating the questions of interest from this module. Your report should include:
+
+* Some simple/concise background on the data set and a clear presentation of the question you want to answer;
+* An exploratory data analysis, where you use data visualizations (tables and figures) to illustrate relationships between variables in the data set, as they relate to the question you are interested in answering, and then discuss what these visualizations tell you;
+* Model results presented in a tidy way, perhaps with a nice table of relevant coefficients and p-values, including a clear discussion of the effects of the variables included in the model;
+* A comparison of results from the survey-weighted model to those from a standard glm, and a brief discussion of what you see.
+
+
+In the written portions of your report, think about connecting each table or visualization that you make with your downstream modeling choices. How do your displays point you toward the model you end up fitting? 
+
+Also, think about justifying each choice of variable in your model: can you use a visualization to do this? Look at significance of coefficients? Talk about how you are curious about a specific variable and how it influences hypertension? Compare models using AIC to decide on your final model?
+
+What is an effective way of illustrating how the results of the weighted and unweighted approaches compare?
+
+Finally, try to make your report as readable as possible: hide any R code or warning messages, try to make the tables readable, etc. 
+
+* Submit your updated analysis report in R Markdown through Github by Sunday March 29, 2020 at midnight.
+* You may work together on this assignment, but you must submit your own report; please credit in your assignment anyone with whom you collaborated.
+
+You should complete this assignment in this .Rmd file.  Any text you want to include should be written outside of the code chunks.  Any code must be written inside of the code chunks.
+
+When you want to test and run your whole assignment, you can click the "Knit" button to create an HTML document with your work.
+
+All code to read in and clean the data, and create your data display must be included in this document for it to knit properly.  That is, this document is a stand-alone document that shows all of the data analysis steps starting with the raw data.  It's helpful to periodically knit your document as you work to be sure you've included all the necessary code.
+
+
+Here is a little code to get you started, but you'll probably want to work from your previous assignment. Read in the NYC HANES data set and store it into an object called `dat`.  (Note, in this project the data is in a folder called `data` in the main project directory.)
+```{r}
+library(haven)
+dat <- read_sas('data/d.sas7bdat')
+dim(dat)
+
+```
+
+
+
+FINALLY:  When you are ready to submit your assignment, do ALL of the following:
+
+* First, knit your .Rmd file to see if it will compile.  If it doesn't knit, you can still follow the steps below to submit your assignment, but please try to resolve the knitting issues before you submit.  You can reach out to us at phbiostats@jhu.edu for help!
+* Next you need to **commit** the changes you've made to the document.  Click the colorful Git button at the top of the RStudio window and select "Commit" from the menu.
+* In the window that opens, **stage** your changes by clicking the check boxes next to the `Asst2-4.Rmd` and `Asst2-4.html` files.
+* In the "Commit message" box, type a short description of what changes you've made, something like: `Completed assignment`
+* Click the "Commit" button on the bottom right.
+* You'll see a window that will tell you about the changes that you've made.  Click "Close" to close the window.  You've successfully committed! You can close this commit window now.
+* After committing, you must **push** your changes to the repository on Github.  Do this by clicking the colorful Git button again and select "Push Branch".  
+* Again, you'll see a window open that tells you your changes have been pushed!
+* If you want, you can look at your repository on [Github.com](https://github.com/) and should be able to see your changes there!  
+* You've successfully submitted your assignment :)
+
