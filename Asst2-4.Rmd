@@ -49,12 +49,14 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r load_libraries, echo=FALSE, include=FALSE}
 # install.packages("survey")
 # install.packages("plotrix")
+# install.packages("pander")
 
 library(tidyverse)  # core group of tidyverse packages
 library(knitr)  # to make nice tables
 library(haven)
 library(survey)
 library(plotrix)
+library(pander)
 library(broom)
 
 dat <- read_sas('data/d.sas7bdat')
@@ -137,9 +139,9 @@ p1
 As seen in this second data display, hypertension generally increases with age and reaches higher rates with worse reported health. However, it is noteworthy that those who reported poor health in the age category 20-29 had 0% hypertension. By filtering the dataset, we can see that this is because there were only two participants who reported poor health in this age category and neither had hypertension. However, because there were so few datapoints in this category, it is likely not representative of the entire NYC population. 
 
 
-I then completed a survey-weighted logistic regression. This analysis includes data from both demographic/health questions (which uses the CAPI_WT) as well as physical exam data (uses EXAM_WT). However, because I excluded unavailable data from this analysis, I chose the more exclusive approach and used EXAM_WT. 
-```{r, include=FALSE, warning=FALSE}
+I then completed a survey-weighted logistic regression. This analysis includes data from both demographic/health questions (which uses the CAPI_WT) as well as physical exam data (uses EXAM_WT). However, because I excluded unavailable data from this analysis, I chose the more exclusive approach and used EXAM_WT.
 
+```{r, include=FALSE}
 hypertension_design <- svydesign(
   id = ~1,
   #fpc = ~rep(N,n),
@@ -147,30 +149,18 @@ hypertension_design <- svydesign(
   data = hy_p_df
 )
 
+summary(hypertension_design)
+
 # weighted analysis
+svymean(~age + bmi + general_health, hypertension_design)
 
 g <- svyglm(hypertension ~ age + bmi + general_health, 
     family = binomial(link = 'logit'), design = hypertension_design)
 
+summary(g)
+
 g_res <- tidy(g)
 g_res
-```
-```{r, echo=FALSE}
-#summary(g)
-g_res <- cbind(g_res, confint(g))
-g_res
-```
-
-Age was found to have a significant effect on hypertension. Holding all other variables constant, a 1-year increase in age led to `r round(exp(coef(g))["age"], digits = 2)` times the odds of hypertension.
-
-BMI was also found to have a significant relationship. Holding all other variables constant, a 1-unit increase in BMI led to `r round(exp(coef(g))["bmi"], digits = 2)` times the odds of hypertension. 
-
-Participant's self-reported general health status was also found to have a significant relationship. Holding all other variables constant, reporting poor or fair health in comparison to excellent health had the most significant relationship, with `r round(exp(coef(g))["general_healthPoor"], digits = 2)` and `r round(exp(coef(g))["general_healthFair"], digits = 2)` times the odds of hypertension respectively. Those who reported good or very good health had `r round(exp(coef(g))["general_healthGood"], digits = 2)` and `r round(exp(coef(g))["general_healthVery good"], digits = 2)` times the odds of hypertension respectively, both as compared to participants who reported excellent health. 
-
-I chose this model with these variables after trying a number of combinations (e.g. including diet, education, marital status) and ultimately eliminated them because they were not significant. 
-
-Now to compare, the non-weighted logistic regression presents the following:
-```{r, include=FALSE}
 
 g_res <- cbind(g_res, confint(g))
 g_res
@@ -183,17 +173,10 @@ summary(model1)
 coef(model1)
 exp(coef(model1))
 
-```
-```{r, echo=FALSE}
 model1_res <- tidy(model1)
+model1_res
 model1_res <- cbind(model1_res, confint(model1))
 model1_res
-```
-
-
-I then utilized a data display to help compare the estimates from the weighted and unweighted logistic regressions:
-
-```{r, echo=FALSE, warning=FALSE}
 
 # combining results
 g_res <- g_res %>% mutate(method="Weighted")
@@ -204,12 +187,37 @@ g1_both<-rbind(g_res, model1_res)
 # dropping the intercept
 noInt <- g1_both %>% filter(term != "(Intercept)")
 
+```
+
+```{r, echo=FALSE}
+pander(g)
+```
+
+
+Age was found to have a significant effect on hypertension. Holding all other variables constant, a 1-year increase in age led to `r round(exp(coef(g))["age"], digits = 2)` times the odds of hypertension.
+
+BMI was also found to have a significant relationship. Holding all other variables constant, a 1-unit increase in BMI led to `r round(exp(coef(g))["bmi"], digits = 2)` times the odds of hypertension. 
+
+Participant's self-reported general health status was also found to have a significant relationship. Holding all other variables constant, reporting poor or fair health in comparison to excellent health had the most significant relationship, with `r round(exp(coef(g))["general_healthPoor"], digits = 2)` and `r round(exp(coef(g))["general_healthFair"], digits = 2)` times the odds of hypertension respectively. Those who reported good or very good health had `r round(exp(coef(g))["general_healthGood"], digits = 2)` and `r round(exp(coef(g))["general_healthVery good"], digits = 2)` times the odds of hypertension respectively, both as compared to participants who reported excellent health. 
+
+I chose this model with these variables after trying a number of combinations (e.g. including diet, education, marital status) and ultimately eliminated them because they were not significant. 
+
+Now to compare, the non-weighted logistic regression presents the following:
+
+```{r, echo=FALSE}
+pander(model1)
+```
+
+
+I then utilized a data display to help compare the estimates from the weighted and unweighted logistic regressions:
+
+```{r, echo=FALSE, warning=FALSE}
 
 # data display
  noInt %>% ggplot(aes(x = estimate, y = term),
      group_by(g1_both$method)) +
      geom_vline(xintercept = 0, linetype = "dashed") +
-     geom_errorbarh(aes(estimate, term, xmin = `2.5 %`, 
+     geom_errorbarh(aes(estimate, term, xmin = `2.5 %`,
      xmax = `97.5 %`, color = factor(method),width = 0.3), size = 0.8)+
      geom_point(aes(color = factor(method),
                     shape = factor(method)),size = 3)+
@@ -223,7 +231,7 @@ Looking at the data display, the confidence intervals for the unweighted logisti
 
 Overall, the weighted and unweighted logistic regression values seem to be comparable considering the great overlap in confidence intervals. 
 
-The estimates themselves were very close (with the biggest difference being between those with unweighted and weighted estimates for being in general good health, with a difference of approximately 0.29). However, the p-values were several orders of magnitude different. The unweighted analysis tended to have smaller and thus more significant values. For example, comparing the p-value for age, it was 2.29e-25 versus 1.27e-35 for the weighted and unweighted analyses respectively. 
+The estimates themselves were very close (with the biggest difference being between those with unweighted and weighted estimates for being in general good health, with a difference of approximately `r round(coef(model1)["general_healthGood"] - coef(g)["general_healthGood"], digits = 2)`). However, the p-values were several orders of magnitude different. The unweighted analysis tended to have smaller and thus more significant values. For example, comparing the p-value for age, it was 2.29e-25 versus 1.27e-35 for the weighted and unweighted analyses respectively. 
 
 
 ```{r, include=FALSE}
