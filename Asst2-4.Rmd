@@ -1,68 +1,247 @@
 ---
 title: "Assignment 2-4: Final report for Module 2"
-author: "Your Name"
-date: "Today's date"
+author: "Lucy Hu"
+date: "March 30, 2020"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+# **Due Sunday, March 29 @ midnight through Github**
+# 
+# Write up your final report to answer the questions:
+# 
+# **Question 2.1: What factors measured in the NYC HANES survey are associated with having hypertension?**
+# and 
+# **Question 2.2: How do our estimates from survey-weighted logistic regression differ from those where we ignore survey weights?**
+# 
+# Write a complete report investigating the questions of interest from this module. Your report should include:
+# 
+# * Some simple/concise background on the data set and a clear presentation of the question you want to answer;
+# * An exploratory data analysis, where you use data visualizations (tables and figures) to illustrate relationships between variables in the data set, as they relate to the question you are interested in answering, and then discuss what these visualizations tell you;
+# * Model results presented in a tidy way, perhaps with a nice table of relevant coefficients and p-values, including a clear discussion of the effects of the variables included in the model;
+# * A comparison of results from the survey-weighted model to those from a standard glm, and a brief discussion of what you see.
+# 
+# 
+# In the written portions of your report, think about connecting each table or visualization that you make with your downstream modeling choices. How do your displays point you toward the model you end up fitting? 
+# 
+# Also, think about justifying each choice of variable in your model: can you use a visualization to do this? Look at significance of coefficients? Talk about how you are curious about a specific variable and how it influences hypertension? Compare models using AIC to decide on your final model?
+# 
+# What is an effective way of illustrating how the results of the weighted and unweighted approaches compare?
+# 
+# Finally, try to make your report as readable as possible: hide any R code or warning messages, try to make the tables readable, etc. 
+# 
+# * Submit your updated analysis report in R Markdown through Github by Sunday March 29, 2020 at midnight.
+# * You may work together on this assignment, but you must submit your own report; please credit in your assignment anyone with whom you collaborated.
+# 
+# You should complete this assignment in this .Rmd file.  Any text you want to include should be written outside of the code chunks.  Any code must be written inside of the code chunks.
+# 
+# When you want to test and run your whole assignment, you can click the "Knit" button to create an HTML document with your work.
+# 
+# All code to read in and clean the data, and create your data display must be included in this document for it to knit properly.  That is, this document is a stand-alone document that shows all of the data analysis steps starting with the raw data.  It's helpful to periodically knit your document as you work to be sure you've included all the necessary code.
+# 
+# 
+# Here is a little code to get you started, but you'll probably want to work from your previous assignment. Read in the NYC HANES data set and store it into an object called `dat`.  (Note, in this project the data is in a folder called `data` in the main project directory.)
 ```
 
-**Due Sunday, March 29 @ midnight through Github**
 
-Write up your final report to answer the questions:
+```{r load_libraries, echo=FALSE, include=FALSE}
+# install.packages("survey")
+# install.packages("plotrix")
 
-**Question 2.1: What factors measured in the NYC HANES survey are associated with having hypertension?**
-and 
-**Question 2.2: How do our estimates from survey-weighted logistic regression differ from those where we ignore survey weights?**
-
-Write a complete report investigating the questions of interest from this module. Your report should include:
-
-* Some simple/concise background on the data set and a clear presentation of the question you want to answer;
-* An exploratory data analysis, where you use data visualizations (tables and figures) to illustrate relationships between variables in the data set, as they relate to the question you are interested in answering, and then discuss what these visualizations tell you;
-* Model results presented in a tidy way, perhaps with a nice table of relevant coefficients and p-values, including a clear discussion of the effects of the variables included in the model;
-* A comparison of results from the survey-weighted model to those from a standard glm, and a brief discussion of what you see.
-
-
-In the written portions of your report, think about connecting each table or visualization that you make with your downstream modeling choices. How do your displays point you toward the model you end up fitting? 
-
-Also, think about justifying each choice of variable in your model: can you use a visualization to do this? Look at significance of coefficients? Talk about how you are curious about a specific variable and how it influences hypertension? Compare models using AIC to decide on your final model?
-
-What is an effective way of illustrating how the results of the weighted and unweighted approaches compare?
-
-Finally, try to make your report as readable as possible: hide any R code or warning messages, try to make the tables readable, etc. 
-
-* Submit your updated analysis report in R Markdown through Github by Sunday March 29, 2020 at midnight.
-* You may work together on this assignment, but you must submit your own report; please credit in your assignment anyone with whom you collaborated.
-
-You should complete this assignment in this .Rmd file.  Any text you want to include should be written outside of the code chunks.  Any code must be written inside of the code chunks.
-
-When you want to test and run your whole assignment, you can click the "Knit" button to create an HTML document with your work.
-
-All code to read in and clean the data, and create your data display must be included in this document for it to knit properly.  That is, this document is a stand-alone document that shows all of the data analysis steps starting with the raw data.  It's helpful to periodically knit your document as you work to be sure you've included all the necessary code.
-
-
-Here is a little code to get you started, but you'll probably want to work from your previous assignment. Read in the NYC HANES data set and store it into an object called `dat`.  (Note, in this project the data is in a folder called `data` in the main project directory.)
-```{r}
+library(tidyverse)  # core group of tidyverse packages
+library(knitr)  # to make nice tables
 library(haven)
+library(survey)
+library(plotrix)
+library(broom)
+
 dat <- read_sas('data/d.sas7bdat')
 dim(dat)
 
 ```
+The New York City Health and Nutrition Examination Survey (NYC HANES) collects data in a population-based, cross-sectional survey to determine health and nutrition status of the New York City population. The dataset contains information on self-reported demographics, health and nutrition questions, and behavioral and drug-use questions as well as laboratory resultd and physical exams.
+
+In this report, we will be using the NYC Hanes dataset to examine what factors are associated with having hypertension and how survey weights impact logistic-regression estimates.
+
+First, looking at factors that are associated with hypertension, I chose to examine age, BMI, and participant's self-reported general health status. 
+```{r, include=FALSE}
+### selecting and renaming variables
+hy_df <- 
+  dat %>% 
+    select(id = KEY,
+           age = SPAGE,
+           agecat = AGEGRP5C,
+           bmi = BMI,
+           general_health = HSQ_1,
+           hypertension = BPQ_2,
+           surveyweight = EXAM_WT
+           )
+
+### numeric to descriptive categories
+hy_df <- hy_df %>% 
+  mutate(general_health = factor(general_health,
+                                 levels = c(1, 2, 3, 4, 5), 
+                                 labels = c("Excellent",
+                                            "Very good",
+                                            "Good", "Fair",
+                                            "Poor")),
+         hypertension = factor(hypertension,
+                               levels = c(2, 1),
+                               labels = c("No", "Yes")),
+         agecat = factor(agecat, 
+                         levels = c(1, 2, 3, 4, 5),
+                         labels = c("20-29", "30-39", "40-49",
+                                    "50-59", "60+"))
+  )
+
+health_tab <- hy_df %>%
+  group_by(general_health) %>%
+  count(general_health, hypertension) %>%
+  mutate(prop=n/sum(n)) %>%
+  filter(hypertension == "Yes")
+
+hy_p_df <- 
+  hy_df %>%
+  drop_na()
+
+dim(hy_p_df)
+
+```
+
+I created several data displays to better understand how the factors influenced hypertension. In these displays I categorized age into 10-year periods in order to display trends among general age groups. 
+
+```{r, echo=FALSE}
+p2 <- hy_p_df %>% 
+        ggplot(aes(x = hypertension, y = bmi)) +
+          geom_boxplot() + 
+          ggtitle('Distribution of BMI by Hypertension Status')
+
+p2
+```
+
+This data display shows that people who are hypertense tend to have higher BMIs.
+
+```{r, echo=FALSE}
+p1 <- hy_p_df %>% 
+        ggplot(aes(x = agecat, fill = hypertension)) + 
+          geom_bar(position = "fill") + 
+          facet_wrap(~general_health) +
+          ggtitle('Distribution of Hypertension by Self-Reported Health Status and Age Group') + 
+          ylab('proportion')
+p1
+
+```
+
+As seen in this second data display, hypertension generally increases with age and reaches higher rates with worse reported health. However, it is noteworthy that those who reported poor health in the age category 20-29 had 0% hypertension. By filtering the dataset, we can see that this is because there were only two participants who reported poor health in this age category and neither had hypertension. However, because there were so few datapoints in this category, it is likely not representative of the entire NYC population. 
 
 
+I then completed a survey-weighted logistic regression. This analysis includes data from both demographic/health questions (which uses the CAPI_WT) as well as physical exam data (uses EXAM_WT). However, because I excluded unavailable data from this analysis, I chose the more exclusive approach and used EXAM_WT. 
+```{r, include=FALSE, warning=FALSE}
 
-FINALLY:  When you are ready to submit your assignment, do ALL of the following:
+hypertension_design <- svydesign(
+  id = ~1,
+  #fpc = ~rep(N,n),
+   weights = ~hy_p_df$surveyweight,
+  data = hy_p_df
+)
 
-* First, knit your .Rmd file to see if it will compile.  If it doesn't knit, you can still follow the steps below to submit your assignment, but please try to resolve the knitting issues before you submit.  You can reach out to us at phbiostats@jhu.edu for help!
-* Next you need to **commit** the changes you've made to the document.  Click the colorful Git button at the top of the RStudio window and select "Commit" from the menu.
-* In the window that opens, **stage** your changes by clicking the check boxes next to the `Asst2-4.Rmd` and `Asst2-4.html` files.
-* In the "Commit message" box, type a short description of what changes you've made, something like: `Completed assignment`
-* Click the "Commit" button on the bottom right.
-* You'll see a window that will tell you about the changes that you've made.  Click "Close" to close the window.  You've successfully committed! You can close this commit window now.
-* After committing, you must **push** your changes to the repository on Github.  Do this by clicking the colorful Git button again and select "Push Branch".  
-* Again, you'll see a window open that tells you your changes have been pushed!
-* If you want, you can look at your repository on [Github.com](https://github.com/) and should be able to see your changes there!  
-* You've successfully submitted your assignment :)
+# weighted analysis
+
+g <- svyglm(hypertension ~ age + bmi + general_health, 
+    family = binomial(link = 'logit'), design = hypertension_design)
+
+g_res <- tidy(g)
+g_res
+```
+```{r, echo=FALSE}
+#summary(g)
+g_res <- cbind(g_res, confint(g))
+g_res
+```
+
+Age was found to have a significant effect on hypertension. Holding all other variables constant, a 1-year increase in age led to `r round(exp(coef(g))["age"], digits = 2)` times the odds of hypertension.
+
+BMI was also found to have a significant relationship. Holding all other variables constant, a 1-unit increase in BMI led to `r round(exp(coef(g))["bmi"], digits = 2)` times the odds of hypertension. 
+
+Participant's self-reported general health status was also found to have a significant relationship. Holding all other variables constant, reporting poor or fair health in comparison to excellent health had the most significant relationship, with `r round(exp(coef(g))["general_healthPoor"], digits = 2)` and `r round(exp(coef(g))["general_healthFair"], digits = 2)` times the odds of hypertension respectively. Those who reported good or very good health had `r round(exp(coef(g))["general_healthGood"], digits = 2)` and `r round(exp(coef(g))["general_healthVery good"], digits = 2)` times the odds of hypertension respectively, both as compared to participants who reported excellent health. 
+
+I chose this model with these variables after trying a number of combinations (e.g. including diet, education, marital status) and ultimately eliminated them because they were not significant. 
+
+Now to compare, the non-weighted logistic regression presents the following:
+```{r, include=FALSE}
+
+g_res <- cbind(g_res, confint(g))
+g_res
+
+# unweighted analysis
+model1 <- glm(hypertension ~ age + bmi + general_health, family=binomial(link = "logit"), data=hy_p_df)
+
+summary(model1)
+
+coef(model1)
+exp(coef(model1))
+
+```
+```{r, echo=FALSE}
+model1_res <- tidy(model1)
+model1_res <- cbind(model1_res, confint(model1))
+model1_res
+```
+
+
+I then utilized a data display to help compare the estimates from the weighted and unweighted logistic regressions:
+
+```{r, echo=FALSE, warning=FALSE}
+
+# combining results
+g_res <- g_res %>% mutate(method="Weighted")
+model1_res <- model1_res %>% mutate(method="Unweighted")
+
+g1_both<-rbind(g_res, model1_res)
+
+# dropping the intercept
+noInt <- g1_both %>% filter(term != "(Intercept)")
+
+
+# data display
+ noInt %>% ggplot(aes(x = estimate, y = term),
+     group_by(g1_both$method)) +
+     geom_vline(xintercept = 0, linetype = "dashed") +
+     geom_errorbarh(aes(estimate, term, xmin = `2.5 %`, 
+     xmax = `97.5 %`, color = factor(method),width = 0.3), size = 0.8)+
+     geom_point(aes(color = factor(method),
+                    shape = factor(method)),size = 3)+
+    theme(axis.title.x = element_blank(),
+    axis.title.y = element_blank()) +
+    ggtitle(expression(atop(bold("95% confidence interval"))))+
+   theme_minimal()
+```
+
+Looking at the data display, the confidence intervals for the unweighted logistic regression estimates skewed higher than those for the weighted value for self-reported general health status. For BMI and age, the confidence intervals appear to overlap. 
+
+Overall, the weighted and unweighted logistic regression values seem to be comparable considering the great overlap in confidence intervals. 
+
+The estimates themselves were very close (with the biggest difference being between those with unweighted and weighted estimates for being in general good health, with a difference of approximately 0.29). However, the p-values were several orders of magnitude different. The unweighted analysis tended to have smaller and thus more significant values. For example, comparing the p-value for age, it was 2.29e-25 versus 1.27e-35 for the weighted and unweighted analyses respectively. 
+
+
+```{r, include=FALSE}
+
+# FINALLY:  When you are ready to submit your assignment, do ALL of the following:
+# 
+# * First, knit your .Rmd file to see if it will compile.  If it doesn't knit, you can still follow the steps below to submit your assignment, but please try to resolve the knitting issues before you submit.  You can reach out to us at phbiostats@jhu.edu for help!
+# * Next you need to **commit** the changes you've made to the document.  Click the colorful Git button at the top of the RStudio window and select "Commit" from the menu.
+# * In the window that opens, **stage** your changes by clicking the check boxes next to the `Asst2-4.Rmd` and `Asst2-4.html` files.
+# * In the "Commit message" box, type a short description of what changes you've made, something like: `Completed assignment`
+# * Click the "Commit" button on the bottom right.
+# * You'll see a window that will tell you about the changes that you've made.  Click "Close" to close the window.  You've successfully committed! You can close this commit window now.
+# * After committing, you must **push** your changes to the repository on Github.  Do this by clicking the colorful Git button again and select "Push Branch".  
+# * Again, you'll see a window open that tells you your changes have been pushed!
+# * If you want, you can look at your repository on [Github.com](https://github.com/) and should be able to see your changes there!  
+# * You've successfully submitted your assignment :)
+
+```
+
+
 
